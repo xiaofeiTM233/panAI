@@ -486,9 +486,9 @@
                                 if (~link.indexOf('?')) {
                                     extra = `${link}&pwd=${pwd}#${pwd}`;
                                 }
-                                GM_openInTab(extra, {active});
+                                GM_openInTab(extra, { active });
                             } else {
-                                GM_openInTab(`${link}`, {active});
+                                GM_openInTab(`${link}`, { active });
                             }
                         }
                     });
@@ -518,7 +518,7 @@
 
         //正则解析网盘链接
         parseLink(text = '') {
-            let obj = {name: '', link: '', storage: '', storagePwdName: ''};
+            let obj = { name: '', link: '', storage: '', storagePwdName: '' };
             if (text) {
                 try {
                     text = decodeURIComponent(text);
@@ -623,7 +623,7 @@
                     let lastValue = input.value;
                     input.value = pwd;
                     //Vue & React 触发 input 事件
-                    let event = new Event('input', {bubbles: true});
+                    let event = new Event('input', { bubbles: true });
                     let tracker = input._valueTracker;
                     if (tracker) {
                         tracker.setValue(lastValue);
@@ -678,7 +678,7 @@
                     navigator.clipboard.readText().then(text => {
                         this.smartIdentify(null, text);
                     }).catch(() => {
-                        toast.fire({title: '读取剪切板失败，请先授权或手动粘贴后识别！', icon: 'error'});
+                        toast.fire({ title: '读取剪切板失败，请先授权或手动粘贴后识别！', icon: 'error' });
                     });
                 }
             });
@@ -755,7 +755,7 @@
                 util.addStyle('swal-pub-style', 'style', GM_getResourceText('swalStyle'));
                 util.addStyle('panai-style', 'style', style);
             });
-            headObserver.observe(document.head, {childList: true, subtree: true});
+            headObserver.observe(document.head, { childList: true, subtree: true });
         },
 
         isTopWindow() {
