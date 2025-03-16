@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/syhyz1990/panAI
-// @version           2.0.5
+// @version           2.0.6
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -115,7 +115,9 @@
             input: ['#accessCode', '.share-access-code', '#wpdoc-share-page > .u-dialog__wrapper .u-input__inner'],
             button: ['#submitBtn', '.share-access .g-button', '#wpdoc-share-page > .u-dialog__wrapper .u-btn--primary'],
             name: '百度网盘',
-            storage: 'hash'
+            storage: 'hash',
+            autoCompleteReg: /(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])\b[\w-]{23}\b/,
+            autoCompleteUrlPrefix: 'https://pan.baidu.com/s/'
         },
         'aliyun': {
             reg: /((?:https?:\/\/)?(?:(?:www\.)?(?:aliyundrive|alipan)\.com\/s|alywp\.net)\/[a-zA-Z\d]+)/,
@@ -139,7 +141,7 @@
             input: ['#pwd'],
             button: ['.passwddiv-btn', '#sub'],
             name: '蓝奏云',
-            storage: 'hash'
+            storage: 'hash',
         },
         'ilanzou': {
             reg: /(?:https?:\/\/)?(?:[a-zA-Z0-9\-.]+)?ilanzou\.com\/s\/[?=\w-]+/,
@@ -173,7 +175,9 @@
             input: ['.pass-input-wrap .td-input__inner'],
             button: ['.pass-input-wrap .td-button'],
             name: '迅雷云盘',
-            storage: 'hash'
+            storage: 'hash',
+            autoCompleteReg: /(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])\b[\w-]{26}\b/,
+            autoCompleteUrlPrefix: 'https://pan.xunlei.com/s/'
         },
         '123pan': {
             reg: /((?:https?:\/\/)?www\.(?:123pan|123865)\.com\/s\/[\w-]{6,})/,
@@ -223,7 +227,9 @@
             button: ['.ant-btn-primary'],
             name: '夸克网盘',
             storage: 'local',
-            storagePwdName: 'tmp_quark_pwd'
+            storagePwdName: 'tmp_quark_pwd',
+            autoCompleteReg: /(?=.*[a-z])(?=.*[0-9])\b[a-z0-9]{12}\b/,
+            autoCompleteUrlPrefix: 'https://pan.quark.cn/s/'
         },
         'feijipan': {
             reg: /((?:https?:\/\/)?share\.feijipan\.com\/s\/[a-zA-Z\d-]+)/,
@@ -401,6 +407,9 @@
                 name: 'setting_timer_open',
                 value: false
             }, {
+                name: 'setting_auto_complete',
+                value: false
+            }, {
                 name: 'setting_timer',
                 value: 5000
             }, {
@@ -437,16 +446,24 @@
         smartIdentify(event, str = '') {
             let selection = window.getSelection();
             let text = str || this.getSelectionHTML(selection);
+            //自动推导网盘前缀的开关
+            const isAutoComplete = util.getValue('setting_auto_complete');
             if (text !== this.lastText && text !== '') { //选择相同文字或空不识别
                 let start = performance.now();
                 this.lastText = text;
-                //util.clog(`当前选中文字：${text}`);
+                util.clog(`当前选中文字：${text}`);
                 let linkObj = this.parseLink(text);
+                util.clog(`解析结果：${JSON.stringify(linkObj)}`);
                 let link = linkObj.link;
                 let name = linkObj.name;
                 let pwd = this.parsePwd(text);
                 if (!link) {
                     linkObj = this.parseParentLink(selection);
+                    link = linkObj.link;
+                    name = linkObj.name;
+                }
+                if (isAutoComplete && !link) {
+                    linkObj = this.parseLink(text, true);
                     link = linkObj.link;
                     name = linkObj.name;
                 }
@@ -517,29 +534,38 @@
         },
 
         //正则解析网盘链接
-        parseLink(text = '') {
+        parseLink(text = '', autoCompletePrefix = false) {
             let obj = { name: '', link: '', storage: '', storagePwdName: '' };
-            if (text) {
-                try {
-                    text = decodeURIComponent(text);
-                } catch {
+            if (!text) {
+                return obj;
+            }
+            try {
+                text = decodeURIComponent(text);
+            } catch {
+            }
+            text = text.replace(/[点點]/g, '.');
+            text = text.replace(/[\u4e00-\u9fa5()（）,\u200B，\uD83C-\uDBFF\uDC00-\uDFFF]/g, '');
+            text = text.replace(/lanzous/g, 'lanzouw'); //修正lanzous打不开的问题
+
+            for (let name in opt) {
+                let item = opt[name];
+                //要求补全链接的前缀应提前加入对应位置
+                if (autoCompletePrefix && item.hasOwnProperty('autoCompleteReg')) {
+                    console.log('%cpanai.user.js:554 autoCompletePrefix,text', 'color: #007acc;', autoCompletePrefix,text);
+                   text = text.replace(item.autoCompleteReg, item.autoCompleteUrlPrefix + "$&");
                 }
-                text = text.replace(/[点點]/g, '.');
-                text = text.replace(/[\u4e00-\u9fa5()（）,\u200B，\uD83C-\uDBFF\uDC00-\uDFFF]/g, '');
-                text = text.replace(/lanzous/g, 'lanzouw'); //修正lanzous打不开的问题
-                for (let name in opt) {
-                    let val = opt[name];
-                    if (val.reg.test(text)) {
-                        let matches = text.match(val.reg);
-                        obj.name = val.name;
-                        obj.link = matches[0];
-                        obj.storage = val.storage;
-                        obj.storagePwdName = val.storagePwdName || null;
-                        if (val.replaceHost) {
-                            obj.link = obj.link.replace(val.host, val.replaceHost);
-                        }
-                        return obj;
+                if (item.reg.test(text)) {
+                    console.log(`匹配文本：${text} 正则：${item.reg},名称：${item.name},开关：${autoCompletePrefix}`);
+                    console.log('%cpanai.user.js:556 autoCompletePrefix,item', 'color: #007acc;', autoCompletePrefix,item);
+                    let matches = text.match(item.reg);
+                    obj.name = item.name;
+                    obj.link = matches[0];
+                    obj.storage = item.storage;
+                    obj.storagePwdName = item.storagePwdName || null;
+                    if (item.replaceHost) {
+                        obj.link = obj.link.replace(item.host, item.replaceHost);
                     }
+                    return obj;
                 }
             }
             return obj;
@@ -688,10 +714,10 @@
         showSettingBox() {
             let html = `<div style="font-size: 1em;">
                               <label class="panai-setting-label">填写密码后自动提交<input type="checkbox" id="S-Auto" ${util.getValue('setting_auto_click_btn') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''}
-                              class="panai-setting-checkbox"></label>
+                              <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label">倒计时结束自动打开<input type="checkbox" id="S-Timer-Open" ${util.getValue('setting_timer_open') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label" id="Panai-Range-Wrapper" style="${util.getValue('setting_timer_open') ? '' : 'display: none'}"><span>倒计时 <span id="Timer-Value">（${util.getValue('setting_timer') / 1000}秒）</span></span><input type="range" id="S-Timer" min="0" max="10000" step="500" value="${util.getValue('setting_timer')}" style="width: 200px;"></label>
+                              <label class="panai-setting-label" title="目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全">自动推导网盘链接(实验性)<input type="checkbox" id="S-Auto-Complete" ${util.getValue('setting_auto_complete') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label">快捷键设置<input type="text" id="S-hotkeys" value="${util.getValue('setting_hotkeys')}" style="width: 100px;"></label> 
                             </div>`;
             Swal.fire({
@@ -717,6 +743,10 @@
                 e.target.checked ? rangeWrapper.style.display = 'flex' : rangeWrapper.style.display = 'none';
                 util.setValue('setting_timer_open', e.target.checked);
             });
+            document.getElementById('S-Auto-Complete').addEventListener('change', (e) => {
+                util.setValue('setting_auto_complete', e.target.checked);
+                console.log('%cpanai.user.js:746 checked', 'color: #007acc;', 'setting_auto_complete', e.target.checked,"  test");
+            })
             document.getElementById('S-Timer').addEventListener('change', (e) => {
                 util.setValue('setting_timer', e.target.value);
                 document.getElementById('Timer-Value').innerText = `（${e.target.value / 1000}秒）`;
