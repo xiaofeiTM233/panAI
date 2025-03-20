@@ -38,7 +38,8 @@
 ## 💽 安装地址
 
 - **[安装地址（源地址）](https://raw.githubusercontent.com/52fisher/panAI/main/panai.user.js)**
-- **[安装地址（镜像地址）](https://cdn.jsdelivr.net/gh/52fisher/panAI@main/panai.user.js)**
+- **[安装地址（jsdelivr镜像地址）](https://cdn.jsdelivr.net/gh/52fisher/panAI@main/panai.user.js)**
+- **[安装地址（ghproxy镜像地址）](https://ghproxy.net/https://raw.githubusercontent.com/52fisher/panAI/main/panai.user.js)**
 
 ## 📖 使用说明
 
