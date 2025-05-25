@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.0.7
+// @version           2.0.8
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -409,6 +409,9 @@
             }, {
                 name: 'setting_auto_complete',
                 value: false
+                }, {
+                name: 'setting_text_as_password',
+                value: false
             }, {
                 name: 'setting_timer',
                 value: 5000
@@ -448,6 +451,7 @@
             let text = str || this.getSelectionHTML(selection);
             //自动推导网盘前缀的开关
             const isAutoComplete = util.getValue('setting_auto_complete');
+            const isTextAsPassword = util.getValue('setting_text_as_password');
             if (text !== this.lastText && text !== '') { //选择相同文字或空不识别
                 let start = performance.now();
                 this.lastText = text;
@@ -461,6 +465,9 @@
                     linkObj = this.parseParentLink(selection);
                     link = linkObj.link;
                     name = linkObj.name;
+                }
+                if (isTextAsPassword && !pwd) {
+                    pwd = this.parseLinkInnerTextAsPwd(selection);
                 }
                 if (isAutoComplete && !link) {
                     linkObj = this.parseLink(text, true);
@@ -576,7 +583,15 @@
             const dom = this.getSelectionHTML(selection, true).querySelector('*[href]');
             return this.parseLink(dom ? dom.href : "");
         },
-
+        //将超链接的文本内容作为提取码
+        parseLinkInnerTextAsPwd(selection) {
+            const dom = this.getSelectionHTML(selection, true).querySelector('*[href]');
+            //提取码仅支持英文大小写、数字，需要提前检验
+            if (/^[a-zA-Z0-9]+$/.test(dom ? dom.innerText: '')) {
+                return dom.innerText;
+            }
+            return '';
+        },
         //正则解析提取码
         parsePwd(text) {
             text = text.replace(/\u200B/g, '').replace('%3A', ":");
@@ -717,6 +732,7 @@
                               <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label">倒计时结束自动打开<input type="checkbox" id="S-Timer-Open" ${util.getValue('setting_timer_open') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label" id="Panai-Range-Wrapper" style="${util.getValue('setting_timer_open') ? '' : 'display: none'}"><span>倒计时 <span id="Timer-Value">（${util.getValue('setting_timer') / 1000}秒）</span></span><input type="range" id="S-Timer" min="0" max="10000" step="500" value="${util.getValue('setting_timer')}" style="width: 200px;"></label>
+                              <label class="panai-setting-label">超链接的文本内容作为密码（实验性）<input type="checkbox" id="S-Text-As-Password" ${util.getValue('setting_text_as_password') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label" title="目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全">自动推导网盘链接(实验性)<input type="checkbox" id="S-Auto-Complete" ${util.getValue('setting_auto_complete') ? 'checked' : ''} class="panai-setting-checkbox"></label>
                               <label class="panai-setting-label">快捷键设置<input type="text" id="S-hotkeys" value="${util.getValue('setting_hotkeys')}" style="width: 100px;"></label> 
                             </div>`;
@@ -747,6 +763,9 @@
                 util.setValue('setting_auto_complete', e.target.checked);
                 console.log('%cpanai.user.js:746 checked', 'color: #007acc;', 'setting_auto_complete', e.target.checked,"  test");
             })
+            document.getElementById('S-Text-As-Password').addEventListener('change', (e) => {
+                util.setValue('setting_text_as_password', e.target.checked);
+            });
             document.getElementById('S-Timer').addEventListener('change', (e) => {
                 util.setValue('setting_timer', e.target.value);
                 document.getElementById('Timer-Value').innerText = `（${e.target.value / 1000}秒）`;
