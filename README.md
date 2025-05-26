@@ -49,7 +49,26 @@
 
 ![](https://pic.rmb.bdstatic.com/bjh/623aeea319185cc50289483a8614118b1805.png)
 
+## 📖 添加自定义网盘的参数说明
+line111行,使用opt对象来管理所有支持的网盘列表和信息，opt的key即为不同网站的名称缩写，key的子对象即为该网站的具体配置，参数说明如下：
+```javascript
+'noire': {
+reg: /(?:https?:\/\/)?drive.noire.cc\/s\/\w+/, //网盘链接的正则表达式，用于匹配链接
+host: /drive\.noire\.cc/,//网盘链接的host，用于匹配链接
+input: ['#pwd'], //密码输入框的选择器，用于获取密码输入框的元素
+button: ['button.MuiButton-containedSecondary'],//密码输入框的确认按钮的选择器，用于获取确认按钮的元素
+name: '爱丽丝的记事本',//网盘名称
+storage: 'local',//密码存储方式，可选local或hash，使用hash时会在链接中添加pwd参数和pwd的hash，使用local时会在本地存储密码
+storagePwdName: 'tmp_noire_pwd',//密码存储的名称，使用local方式存储密码能通过该值获取对应的密码
+originalLink:true,//是否保留原始链接，当参数值为true时，会保留原始链接，不会拼接pwd参数和pwd的hash，以解决部分网站路由跳转不对的问题
+replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的host，解决部分网站路由跳转不对的问题
+},
+```
+
+
 ## 📖 更新日志
+**v2.0.9** 增加orginalLink（Boolean）可选参数，默认false。当参数值为true时，会保留原始链接，不会拼接pwd参数和pwd的hash，以解决部分网站路由跳转不对的问题
+
 **v2.0.8**支持将超链接的文本作为密码（仅支持大小写字母和数字），实验性功能  需要在设置中打开
 
 **v2.0.7** 修复quark网盘主页搜索时弹出错误的密码填写提示

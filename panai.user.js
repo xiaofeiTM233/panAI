@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.0.8
+// @version           2.0.9
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -505,7 +505,7 @@
                                 util.setValue(linkObj.storagePwdName, pwd);
                             }
                             let active = util.getValue('setting_active_in_front');
-                            if (pwd) {
+                            if (pwd && !linkObj.originalLink) {
                                 let extra = `${link}?pwd=${pwd}#${pwd}`;
                                 if (~link.indexOf('?')) {
                                     extra = `${link}&pwd=${pwd}#${pwd}`;
@@ -569,6 +569,7 @@
                     obj.link = matches[0];
                     obj.storage = item.storage;
                     obj.storagePwdName = item.storagePwdName || null;
+                    obj.originalLink = item.originalLink || false;
                     if (item.replaceHost) {
                         obj.link = obj.link.replace(item.host, item.replaceHost);
                     }
