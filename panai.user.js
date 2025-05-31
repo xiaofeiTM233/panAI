@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name              网盘智能识别助手
-// @namespace         https://github.com/syhyz1990/panAI
-// @version           2.0.4
-// @author            YouXiaoHou,52fisher
-// @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
+// @name              网盘智能识别助手（持续更新版）
+// @namespace         https://github.com/xiaofeiTM233/panAI
+// @version           3.0.0
+// @author            YouXiaoHou,52fisher,xiaofeiTM233
+// @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅Google云端硬盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
 // @homepage          https://www.youxiaohou.com/tool/install-panai.html
-// @supportURL        https://github.com/syhyz1990/panAI
-// @updateURL         https://www.youxiaohou.com/panai.user.js
-// @downloadURL       https://www.youxiaohou.com/panai.user.js
+// @supportURL        https://github.com/xiaofeiTM233/panAI
+// @updateURL         https://fastly.jsdelivr.net/gh/xiaofeiTM233/panAI/panai.user.js
+// @downloadURL       https://fastly.jsdelivr.net/gh/xiaofeiTM233/panAI/panai.user.js
 // @match             *://*/*
 // @require           https://unpkg.com/sweetalert2@10.16.6/dist/sweetalert2.min.js
 // @require           https://unpkg.com/hotkeys-js@3.13.3/dist/hotkeys.min.js
@@ -691,7 +691,7 @@
                 icon: 'info',
                 showCloseButton: true,
                 confirmButtonText: '保存',
-                footer: '<div style="text-align: center;font-size: 1em;">点击查看 <a href="https://www.youxiaohou.com/tool/install-panai.html" target="_blank">使用说明</a>，助手免费开源，Powered by <a href="https://www.youxiaohou.com">油小猴</a></div>',
+                footer: '<div style="text-align: center;font-size: 1em;">点击查看 <a href="https://www.youxiaohou.com/tool/install-panai.html" target="_blank">使用说明</a></div>',
                 customClass
             }).then((res) => {
                 res.isConfirmed && history.go(0);
