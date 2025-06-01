@@ -266,6 +266,11 @@
             name: 'Mega',
             storage: 'local'
         },
+        'qfile': {
+            reg: /((?:https?:\/\/)?qfile\.qq\.com\/q\/[0-9a-zA-Z]+)/,
+            host: /qfile\.qq\.com/,
+            name: 'QQ闪传',
+        },
         '520vip': {
             reg: /((?:https?:\/\/)?www\.(?:520-vip|eos-53)\.com\/file-\d+\.html)/,
             host: /www\.520-vip\.com/,
