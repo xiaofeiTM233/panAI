@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.0.9
+// @version           2.1.0
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -180,8 +180,8 @@
             autoCompleteUrlPrefix: 'https://pan.xunlei.com/s/'
         },
         '123pan': {
-            reg: /((?:https?:\/\/)?www\.(?:123pan|123865)\.com\/s\/[\w-]{6,})/,
-            host: /www\.123pan\.com/,
+            reg: /((?:https?:\/\/)?www\.(?:123pan|123865|123684|123652|123912)\.com\/s\/[\w-]{6,})/,
+            host: /www\.(?:123pan|123865|123684|123652|123912)\.com/,
             input: ['.ca-fot input', ".appinput .appinput"],
             button: ['.ca-fot button', ".appinput button"],
             name: '123云盘',
@@ -419,7 +419,7 @@
             }, {
                 name: 'setting_auto_complete',
                 value: false
-                }, {
+            }, {
                 name: 'setting_text_as_password',
                 value: false
             }, {
@@ -568,12 +568,12 @@
                 let item = opt[name];
                 //要求补全链接的前缀应提前加入对应位置
                 if (autoCompletePrefix && item.hasOwnProperty('autoCompleteReg')) {
-                    console.log('%cpanai.user.js:554 autoCompletePrefix,text', 'color: #007acc;', autoCompletePrefix,text);
-                   text = text.replace(item.autoCompleteReg, item.autoCompleteUrlPrefix + "$&");
+                    console.log('%cpanai.user.js:554 autoCompletePrefix,text', 'color: #007acc;', autoCompletePrefix, text);
+                    text = text.replace(item.autoCompleteReg, item.autoCompleteUrlPrefix + "$&");
                 }
                 if (item.reg.test(text)) {
                     console.log(`匹配文本：${text} 正则：${item.reg},名称：${item.name},开关：${autoCompletePrefix}`);
-                    console.log('%cpanai.user.js:556 autoCompletePrefix,item', 'color: #007acc;', autoCompletePrefix,item);
+                    console.log('%cpanai.user.js:556 autoCompletePrefix,item', 'color: #007acc;', autoCompletePrefix, item);
                     let matches = text.match(item.reg);
                     obj.name = item.name;
                     obj.link = matches[0];
@@ -598,7 +598,7 @@
         parseLinkInnerTextAsPwd(selection) {
             const dom = this.getSelectionHTML(selection, true).querySelector('*[href]');
             //提取码仅支持英文大小写、数字，需要提前检验
-            if (/^[a-zA-Z0-9]+$/.test(dom ? dom.innerText: '')) {
+            if (/^[a-zA-Z0-9]+$/.test(dom ? dom.innerText : '')) {
                 return dom.innerText;
             }
             return '';
@@ -772,7 +772,6 @@
             });
             document.getElementById('S-Auto-Complete').addEventListener('change', (e) => {
                 util.setValue('setting_auto_complete', e.target.checked);
-                console.log('%cpanai.user.js:746 checked', 'color: #007acc;', 'setting_auto_complete', e.target.checked,"  test");
             })
             document.getElementById('S-Text-As-Password').addEventListener('change', (e) => {
                 util.setValue('setting_text_as_password', e.target.checked);
