@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.1.0
+// @version           2.1.1
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -230,6 +230,14 @@
             storagePwdName: 'tmp_quark_pwd',
             autoCompleteReg: /(?=.*[a-z])(?=.*[0-9])\b[a-z0-9]{12}\b/,
             autoCompleteUrlPrefix: 'https://pan.quark.cn/s/'
+        },
+        'pikpak': {
+            reg: /((?:https?:\/\/)?mypikpak\.com\/s\/[a-zA-Z\d-]+)/,
+            host: /(?:[a-zA-Z\d-.]+)?mypikpak\.com/,
+            input: ['.el-input__wrapper input'],
+            button: ['.passcode-input+button'],
+            name: 'PikPak',
+            storage: 'hash',
         },
         'feijipan': {
             reg: /((?:https?:\/\/)?share\.feijipan\.com\/s\/[a-zA-Z\d-]+)/,
@@ -660,7 +668,7 @@
                 let input = util.query(inputSelector);
                 let button = util.query(buttonSelector);
                 if (input && !util.isHidden(input)) {
-                    clearInterval(ins);
+                   
                     Swal.fire({
                         toast: true,
                         position: 'top',
@@ -684,7 +692,11 @@
 
                     if (util.getValue('setting_auto_click_btn')) {
                         await util.sleep(1000); //1秒后点击按钮
-                        button.click();
+                        //若button被禁用，则需要重试
+                        if(!button.disabled){
+                            button.click();
+                            clearInterval(ins);
+                        }
                     }
                 } else {
                     maxTime === 0 && clearInterval(ins);
