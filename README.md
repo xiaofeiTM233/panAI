@@ -82,10 +82,13 @@ replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的ho
 ## 📖 更新日志
 
 ### PANAI-NEXT
-** v3.0.0 ** 重构并优化了代码，修复了一些 bug。使用指数退避计算延迟，现在可以对button按钮无法点击的情况进行多次重试了.
+**v3.0.0** 重构并优化了代码，修复了一些 bug。使用指数退避计算延迟，现在可以对button按钮无法点击的情况进行多次重试了.
 
 
 ### PANAI
+
+**v2.1.2** 支持115cdn
+
 **v2.1.1** 当button按钮无法点击时，会进行重试，重试间隔为800ms，最多重试10次。（修复pikpak无法提交密码的问题）
 
 **v2.1.0** 支持qfile和Google Drive（thanks [@xiaofeiTM233](https://github.com/xiaofeiTM233) ），支持123盘的多域名(123pan/123865/123684/123652/123912)
