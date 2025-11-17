@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.1.4
+// @version           2.1.5
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -167,17 +167,16 @@
             button: ['.token-form .btn-token'],
             name: '移动云盘',
             storage: 'local',
-            storagePwdName: 'tmp_caiyun_pwd'
+            storagePwdName: 'tmp_yun139_pwd'
         },
         'yun139': {
-            reg: /(?:https?:\/\/)?yun\.139\.com\/share(?:web|wap)\/#\/w\/i\/\w+/,
+            reg: /(?:https?:\/\/)?yun\.139\.com\/share(?:web|wap)\/#\/[wm]\/i\/\w+/,
             host: /yun\.139\.com/,
             input: ['.token-form input[type=text]'],
             button: ['.token-form .btn-token'],
             name: '中国移动云盘',
             storage: 'local',
             storagePwdName: 'tmp_yun139_pwd',
-            originalLink: true,
         },
         'xunlei': {
             reg: /((?:https?:\/\/)?pan\.xunlei\.com\/s\/[\w-]{10,})/,
@@ -528,21 +527,44 @@
                     Swal.fire(option).then((res) => {
                         this.lastText = 'lorem&';
                         selection.empty();
-                        if (res.isConfirmed || res.dismiss === 'timer') {
-                            if (linkObj.storage == "local") {
-                                util.setValue(linkObj.storagePwdName, pwd);
-                            }
-                            let active = util.getValue('setting_active_in_front');
-                            if (pwd && !linkObj.originalLink) {
-                                let extra = `${link}?pwd=${pwd}#${pwd}`;
-                                if (~link.indexOf('?')) {
-                                    extra = `${link}&pwd=${pwd}#${pwd}`;
+                        //防御式编程
+                        if (!res.isConfirmed && res.dismiss !== 'timer') {
+                            return;
+                        }
+                        // 获取是否在前台打开的设置
+                        const active = util.getValue('setting_active_in_front');
+                        let targetLink = link;
+                        // 密码为空时，直接打开链接
+                        if (!pwd) {
+                            GM_openInTab(targetLink, { active });
+                            return;
+                        }
+                        // 存储方式为local时，将密码存储到本地存储
+                        // 根据存储类型决定如何处理链接
+                        if (linkObj.storage === "local") {
+                            util.setValue(linkObj.storagePwdName, pwd);
+                            // local模式：直接使用原链接，不进行任何参数拼接
+                            targetLink = link;
+                        } else if (linkObj.storage === "hash") {
+                            // 链接中没有#：使用三目运算符直接拼接pwd参数和#hash
+                            targetLink = link.includes('?') ? `${link}&pwd=${pwd}#${pwd}` : `${link}?pwd=${pwd}#${pwd}`;
+                            // 若为hash模式：需要考虑框架路由情况
+                            if (link.includes('#')) {
+                                // 链接中已有#，可能是使用了Vue等框架的路由模式
+                                // 检查#后面的内容是否符合框架路由特征（通常包含/或?等）
+                                const hashIndex = link.indexOf('#');
+                                const hashPart = link.slice(hashIndex + 1);
+                                const urlPart = link.slice(0, hashIndex); // 提取#前面的URL部分
+                                // 判断是否为框架路由模式（这里通过简单规则判断，可根据需要调整）
+                                const isFrameworkRoute = hashPart.startsWith('/') || hashPart.includes('?') || hashPart.includes('=');
+                                if (isFrameworkRoute) {
+                                    // 框架路由模式：在#前面添加pwd查询参数，不影响hash路由
+                                    targetLink = urlPart.includes('?') ? `${urlPart}&pwd=${pwd}#${hashPart}` : `${urlPart}?pwd=${pwd}#${hashPart}`;
                                 }
-                                GM_openInTab(extra, { active });
-                            } else {
-                                GM_openInTab(`${link}`, { active });
                             }
                         }
+                        // 打开标签页
+                        GM_openInTab(targetLink, { active });
                     });
                 }
             }
@@ -585,18 +607,15 @@
                 let item = opt[name];
                 //要求补全链接的前缀应提前加入对应位置
                 if (autoCompletePrefix && item.hasOwnProperty('autoCompleteReg')) {
-                    console.log('%cpanai.user.js:554 autoCompletePrefix,text', 'color: #007acc;', autoCompletePrefix, text);
                     text = text.replace(item.autoCompleteReg, item.autoCompleteUrlPrefix + "$&");
                 }
                 if (item.reg.test(text)) {
                     console.log(`匹配文本：${text} 正则：${item.reg},名称：${item.name},开关：${autoCompletePrefix}`);
-                    console.log('%cpanai.user.js:556 autoCompletePrefix,item', 'color: #007acc;', autoCompletePrefix, item);
                     let matches = text.match(item.reg);
                     obj.name = item.name;
                     obj.link = matches[0];
                     obj.storage = item.storage;
                     obj.storagePwdName = item.storagePwdName || null;
-                    obj.originalLink = item.originalLink || false;
                     if (item.replaceHost) {
                         obj.link = obj.link.replace(item.host, item.replaceHost);
                     }
@@ -624,7 +643,7 @@
         parsePwd(text) {
             text = text.replace(/\u200B/g, '').replace('%3A', ":");
             text = text.replace(/(?:本帖)?隐藏的?内容[：:]?/, "");
-            let reg = /wss:[a-zA-Z0-9]+|(?<=\s*(?:密|提取|访问|訪問|key|password|pwd|#|\?p=|\?code=)\s*[码碼]?\s*[：:=]?\s*)[a-zA-Z0-9]{3,8}/i;
+            let reg = /wss:[a-zA-Z0-9]+|(?<=\s*(?:密|提取|访问|訪問|key|password|pwd|#|\?p=)\s*[码碼]?\s*[：:=]?\s*)[a-zA-Z0-9]{3,8}/i;
             if (reg.test(text)) {
                 let match = text.match(reg);
                 return match[0];
@@ -659,6 +678,7 @@
                         //如果能从url中获取到密码，则应该优先使用url中获取的密码,但现在使用JS框架的网站很多，存在不少使用hash模式的路由，hash的可信度应该降低
                         pwd = query || util.getValue(val.storagePwdName) || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
+                        return;
                     }
                     if (val.storage === 'hash') {
                         if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(hash)) { //过滤掉不正常的Hash
@@ -666,6 +686,7 @@
                         }
                         pwd = query || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
+                        return;
                     }
                 }
             }
@@ -731,7 +752,6 @@
                 }
             });
         },
-
         //识别输入框中的内容
         showIdentifyBox() {
             Swal.fire({
@@ -757,55 +777,7 @@
                 }
             });
         },
-
-        //显示设置
-        // showSettingBox() {
-        //     let html = `<div style="font-size: 1em;">
-        //                       <label class="panai-setting-label">填写密码后自动提交<input type="checkbox" id="S-Auto" ${util.getValue('setting_auto_click_btn') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-        //                       <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-        //                       <label class="panai-setting-label">倒计时结束自动打开<input type="checkbox" id="S-Timer-Open" ${util.getValue('setting_timer_open') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-        //                       <label class="panai-setting-label" id="Panai-Range-Wrapper" style="${util.getValue('setting_timer_open') ? '' : 'display: none'}"><span>倒计时 <span id="Timer-Value">(${util.getValue('setting_timer') / 1000}秒)</span></span><input type="range" id="S-Timer" min="0" max="10000" step="500" value="${util.getValue('setting_timer')}" style="width: 200px;"></label>
-        //                       <label class="panai-setting-label">超链接的文本内容作为密码（实验性）<input type="checkbox" id="S-Text-As-Password" ${util.getValue('setting_text_as_password') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-        //                       <label class="panai-setting-label" title="目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全">自动推导网盘链接(实验性)<input type="checkbox" id="S-Auto-Complete" ${util.getValue('setting_auto_complete') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-        //                       <label class="panai-setting-label">快捷键设置<input type="text" id="S-hotkeys" value="${util.getValue('setting_hotkeys')}" style="width: 100px;"></label> 
-        //                     </div>`;
-        //     Swal.fire({
-        //         title: '识别助手配置',
-        //         html,
-        //         icon: 'info',
-        //         showCloseButton: true,
-        //         confirmButtonText: '保存',
-        //         footer: '<div style="text-align: center;font-size: 1em;">点击查看 <a href="https://www.youxiaohou.com/tool/install-panai.html" target="_blank">使用说明</a>，助手免费开源，Powered by <a href="https://www.youxiaohou.com">油小猴</a></div>',
-        //         customClass
-        //     }).then((res) => {
-        //         res.isConfirmed && history.go(0);
-        //     });
-
-        //     document.getElementById('S-Auto').addEventListener('change', (e) => {
-        //         util.setValue('setting_auto_click_btn', e.target.checked);
-        //     });
-        //     document.getElementById('S-Active').addEventListener('change', (e) => {
-        //         util.setValue('setting_active_in_front', e.target.checked);
-        //     });
-        //     document.getElementById('S-Timer-Open').addEventListener('change', (e) => {
-        //         let rangeWrapper = document.getElementById('Panai-Range-Wrapper');
-        //         e.target.checked ? rangeWrapper.style.display = 'flex' : rangeWrapper.style.display = 'none';
-        //         util.setValue('setting_timer_open', e.target.checked);
-        //     });
-        //     document.getElementById('S-Auto-Complete').addEventListener('change', (e) => {
-        //         util.setValue('setting_auto_complete', e.target.checked);
-        //     })
-        //     document.getElementById('S-Text-As-Password').addEventListener('change', (e) => {
-        //         util.setValue('setting_text_as_password', e.target.checked);
-        //     });
-        //     document.getElementById('S-Timer').addEventListener('change', (e) => {
-        //         util.setValue('setting_timer', e.target.value);
-        //         document.getElementById('Timer-Value').innerText = `（${e.target.value / 1000}秒）`;
-        //     });
-        //     document.getElementById('S-hotkeys').addEventListener('change', (e) => {
-        //         util.setValue('setting_hotkeys', e.target.value);
-        //     });
-        // },
+        // 显示设置项弹窗
         showSettingBox() {
             // 创建设置项配置数组，使用更具描述性的ID名称
             const settings = [

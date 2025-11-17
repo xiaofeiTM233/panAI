@@ -71,9 +71,9 @@ host: /drive\.noire\.cc/,//网盘链接的host，用于匹配链接
 input: ['#pwd'], //密码输入框的选择器，用于获取密码输入框的元素
 button: ['button.MuiButton-containedSecondary'],//密码输入框的确认按钮的选择器，用于获取确认按钮的元素
 name: '爱丽丝的记事本',//网盘名称
-storage: 'local',//密码存储方式，可选local或hash，使用hash时会在链接中添加pwd参数和pwd的hash，使用local时会在本地存储密码
+storage: 'local',//密码存储方式，可选local或hash，使用hash时会在链接中添加pwd参数和pwd的hash，使用local时会在本地存储密码，且使用原链接访问，不会拼接pwd参数和pwd的hash。
 storagePwdName: 'tmp_noire_pwd',//密码存储的名称，使用local方式存储密码能通过该值获取对应的密码
-originalLink:true,//是否保留原始链接，当参数值为true时，会保留原始链接，不会拼接pwd参数和pwd的hash，以解决部分网站路由跳转不对的问题
+originalLink:true,//是否保留原始链接，当参数值为true时，会保留原始链接，不会拼接pwd参数和pwd的hash，以解决部分网站路由跳转不对的问题。注意：此参数现已被storage: 'local'所替代，无需设置。
 replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的host，解决部分网站路由跳转不对的问题
 },
 ```
@@ -86,6 +86,10 @@ replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的ho
 
 
 ### PANAI
+
+**v2.1.5** 代码重构，移除OriginalLink参数，使用storage: 'local'不会再更改原链接，也不会在链接后拼接pwd参数和hash。storage: 'hash'在拼接时会根据链接是否为VUE等框架的hash模式，来判断拼接参数的位置。
+
+**v2.1.4** 修复无法自动填充密码的bug，SettingBox重构
 
 **v2.1.3** 支持移动云盘新域名 yun.139.com，修复部分网盘使用hash路由造成的密码识别错误问题
 
@@ -232,4 +236,4 @@ A：根据多次测试，平均识别时间仅需：0.1 毫秒-1 毫秒，基本
 
 ## 👻 BUG反馈
 
-如果您在使用过程中有无法识别的文本，请 [点击这里](https://github.com/syhyz1990/panAI/issues) 进行反馈。
+如果您在使用过程中有无法识别的文本，请 [点击这里](https://github.com/52fisher/panAI/issues) 进行反馈。
