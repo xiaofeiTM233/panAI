@@ -580,7 +580,6 @@
             }
             text = text.replace(/[点點]/g, '.');
             text = text.replace(/[\u4e00-\u9fa5()（）,\u200B，\uD83C-\uDBFF\uDC00-\uDFFF]/g, '');
-            text = text.replace(/lanzous/g, 'lanzouw'); //修正lanzous打不开的问题
 
             for (let name in opt) {
                 let item = opt[name];
