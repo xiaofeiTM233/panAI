@@ -170,7 +170,7 @@
             storagePwdName: 'tmp_caiyun_pwd'
         },
         'yun139': {
-            reg: /(?:https?:\/\/)?yun\.139\.com\/shareweb\/#\/w\/i\/\w+/,
+            reg: /(?:https?:\/\/)?yun\.139\.com\/share(?:web|wap)\/#\/w\/i\/\w+/,
             host: /yun\.139\.com/,
             input: ['.token-form input[type=text]'],
             button: ['.token-form .btn-token'],
@@ -648,23 +648,25 @@
         //自动填写密码
         autoFillPassword() {
             let query = util.parseQuery('pwd|p');
-            let hash = location.hash.slice(1).replace(/\W/g, "") //hash中可能存在密码，需要过滤掉非密码字符
-            let pwd = query || hash;
+            let pwd = '';
+            let hash = location.hash.slice(1);//hash中可能存在密码
+            hash = /\W/.test(hash) ? null : hash //若hash中存在\W（非字母、下划线、数字字符）,有可能使用框架的hash模式，此时hash的可信度低
             let panType = this.panDetect();
             for (let name in opt) {
                 let val = opt[name];
                 if (panType === name) {
                     if (val.storage === 'local') {
                         //当前local存储的密码不一定是当前链接的密码，用户可能通过url直接访问或者恢复页面，这样取出来的密码可能是其他链接的
-                        //如果能从url中获取到密码，则应该优先使用url中获取的密码
+                        //如果能从url中获取到密码，则应该优先使用url中获取的密码,但现在使用JS框架的网站很多，存在不少使用hash模式的路由，hash的可信度应该降低
                         //util.getValue查询不到key时，默认返回undefined，已经形成逻辑短路，此处赋空值无效也无需赋空值.详见https://github.com/syhyz1990/panAI/commit/efb6ff0c77972920b26617bb836a2e19dd14a749
-                        pwd = pwd || util.getValue(val.storagePwdName);
+                        pwd = query || util.getValue(val.storagePwdName) || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
                     }
                     if (val.storage === 'hash') {
                         if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(pwd)) { //过滤掉不正常的Hash
                             return;
                         }
+                        pwd = query || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
                     }
                 }
