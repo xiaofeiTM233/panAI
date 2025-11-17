@@ -87,6 +87,8 @@ replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的ho
 
 ### PANAI
 
+**v2.1.6** 代码重构，使用指数退避算法计算重试延迟
+
 **v2.1.5** 代码重构，移除OriginalLink参数，使用storage: 'local'不会再更改原链接，也不会在链接后拼接pwd参数和hash。storage: 'hash'在拼接时会根据链接是否为VUE等框架的hash模式，来判断拼接参数的位置。
 
 **v2.1.4** 修复无法自动填充密码的bug，SettingBox重构

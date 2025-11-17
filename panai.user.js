@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.1.5
+// @version           2.1.6
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -434,7 +434,7 @@
                 name: 'setting_timer_open',
                 value: false
             }, {
-                name: 'setting_auto_complete',
+name: 'setting_auto_complete',
                 value: false
             }, {
                 name: 'setting_text_as_password',
@@ -693,46 +693,95 @@
         },
 
         doFillAction(inputSelector, buttonSelector, pwd) {
-            let maxTime = 10;
-            let ins = setInterval(async () => {
-                maxTime--;
-                let input = util.query(inputSelector);
-                let button = util.query(buttonSelector);
-                if (input && !util.isHidden(input)) {
-
-                    Swal.fire({
-                        toast: true,
-                        position: 'top',
-                        showCancelButton: false,
-                        showConfirmButton: false,
-                        title: 'AI已识别到密码！正自动帮您填写',
-                        icon: 'success',
-                        timer: 2000,
-                        customClass
-                    });
-
-                    let lastValue = input.value;
-                    input.value = pwd;
-                    //Vue & React 触发 input 事件
-                    let event = new Event('input', { bubbles: true });
-                    let tracker = input._valueTracker;
-                    if (tracker) {
-                        tracker.setValue(lastValue);
-                    }
-                    input.dispatchEvent(event);
-
-                    if (util.getValue('setting_auto_click_btn')) {
-                        await util.sleep(1000); //1秒后点击按钮
-                        //若button被禁用，则需要重试
-                        if (!button.disabled) {
-                            button.click();
-                            clearInterval(ins);
-                        }
-                    }
-                } else {
-                    maxTime === 0 && clearInterval(ins);
+            let attempt = 0;          // 尝试次数
+            const maxAttempts = 10;   // 最大尝试次数
+            const baseDelay = 400;    // 基础延迟时间(ms)
+            const maxDelay = 5000;    // 最大延迟时间(ms)
+            let timeoutId = null;
+            
+            // 指数退避重试函数
+            const retryWithBackoff = async () => {
+                // 检查是否已达到最大尝试次数
+                if (attempt >= maxAttempts) {
+                    console.log('密码填充超时，已达到最大尝试次数');
+                    return;
                 }
-            }, 800);
+                
+                attempt++;
+                
+                try {
+                    let input = util.query(inputSelector);
+                    let button = util.query(buttonSelector);
+                    
+                    if (input && !util.isHidden(input)) {
+                        // 找到输入框并可见，执行填充操作
+                        let titletips = attempt === 1 ? 'AI已识别到密码！正自动帮您填写' : 'AI已识别到密码！正自动帮您重试 +' + attempt + ' 次';
+                        Swal.fire({
+                            toast: true,
+                            position: 'top',
+                            showCancelButton: false,
+                            showConfirmButton: false,
+                            title: titletips,
+                            icon: attempt === 1 ? 'success' : 'warning',
+                            timer: 2000,
+                            customClass
+                        });
+
+                        let lastValue = input.value;
+                        input.value = pwd;
+                        //Vue & React 触发 input 事件
+                        let event = new Event('input', { bubbles: true });
+                        let tracker = input._valueTracker;
+                        if (tracker) {
+                            tracker.setValue(lastValue);
+                        }
+                        input.dispatchEvent(event);
+
+                        if (util.getValue('setting_auto_click_btn')) {
+                            await util.sleep(1000); //1秒后点击按钮
+                            //若button被禁用，则需要重试
+                            if (!button.disabled) {
+                                button.click();
+                                return; // 成功完成操作，不再重试
+                            }
+                        }
+                        
+                        // 如果已填充但按钮仍被禁用，继续重试
+                        scheduleNextAttempt();
+                    } else {
+                        // 未找到元素，继续重试
+                        scheduleNextAttempt();
+                    }
+                } catch (error) {
+                    console.error('密码填充过程中发生错误:', error);
+                    scheduleNextAttempt();
+                }
+            };
+            
+            // 安排下一次尝试
+            const scheduleNextAttempt = () => {
+                // 计算指数退避延迟时间: baseDelay * (2^attempt) * (0.8 + 0.4 * Math.random())
+                // 添加随机因子(80%-120%)避免同步请求
+                const exponentialDelay = Math.min(
+                    baseDelay * Math.pow(2, attempt - 1),
+                    maxDelay
+                );
+                const jitter = 0.8 + 0.4 * Math.random(); // 添加随机因子
+                const delay = Math.floor(exponentialDelay * jitter);
+                
+                console.log(`第${attempt}次尝试失败，${delay}ms后进行第${attempt + 1}次尝试`);
+                timeoutId = setTimeout(retryWithBackoff, delay);
+            };
+            
+            // 初始尝试
+            retryWithBackoff();
+            
+            // 返回清理函数，方便外部取消重试
+            return () => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+            };
         },
 
         //重置识别次数
