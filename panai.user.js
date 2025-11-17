@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.1.3
+// @version           2.1.4
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -177,7 +177,7 @@
             name: '中国移动云盘',
             storage: 'local',
             storagePwdName: 'tmp_yun139_pwd',
-            originalLink:true,
+            originalLink: true,
         },
         'xunlei': {
             reg: /((?:https?:\/\/)?pan\.xunlei\.com\/s\/[\w-]{10,})/,
@@ -657,12 +657,11 @@
                     if (val.storage === 'local') {
                         //当前local存储的密码不一定是当前链接的密码，用户可能通过url直接访问或者恢复页面，这样取出来的密码可能是其他链接的
                         //如果能从url中获取到密码，则应该优先使用url中获取的密码,但现在使用JS框架的网站很多，存在不少使用hash模式的路由，hash的可信度应该降低
-                        //util.getValue查询不到key时，默认返回undefined，已经形成逻辑短路，此处赋空值无效也无需赋空值.详见https://github.com/syhyz1990/panAI/commit/efb6ff0c77972920b26617bb836a2e19dd14a749
                         pwd = query || util.getValue(val.storagePwdName) || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
                     }
                     if (val.storage === 'hash') {
-                        if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(pwd)) { //过滤掉不正常的Hash
+                        if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(hash)) { //过滤掉不正常的Hash
                             return;
                         }
                         pwd = query || hash;
@@ -679,7 +678,7 @@
                 let input = util.query(inputSelector);
                 let button = util.query(buttonSelector);
                 if (input && !util.isHidden(input)) {
-                   
+
                     Swal.fire({
                         toast: true,
                         position: 'top',
@@ -704,7 +703,7 @@
                     if (util.getValue('setting_auto_click_btn')) {
                         await util.sleep(1000); //1秒后点击按钮
                         //若button被禁用，则需要重试
-                        if(!button.disabled){
+                        if (!button.disabled) {
                             button.click();
                             clearInterval(ins);
                         }
@@ -760,16 +759,131 @@
         },
 
         //显示设置
+        // showSettingBox() {
+        //     let html = `<div style="font-size: 1em;">
+        //                       <label class="panai-setting-label">填写密码后自动提交<input type="checkbox" id="S-Auto" ${util.getValue('setting_auto_click_btn') ? 'checked' : ''} class="panai-setting-checkbox"></label>
+        //                       <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''} class="panai-setting-checkbox"></label>
+        //                       <label class="panai-setting-label">倒计时结束自动打开<input type="checkbox" id="S-Timer-Open" ${util.getValue('setting_timer_open') ? 'checked' : ''} class="panai-setting-checkbox"></label>
+        //                       <label class="panai-setting-label" id="Panai-Range-Wrapper" style="${util.getValue('setting_timer_open') ? '' : 'display: none'}"><span>倒计时 <span id="Timer-Value">(${util.getValue('setting_timer') / 1000}秒)</span></span><input type="range" id="S-Timer" min="0" max="10000" step="500" value="${util.getValue('setting_timer')}" style="width: 200px;"></label>
+        //                       <label class="panai-setting-label">超链接的文本内容作为密码（实验性）<input type="checkbox" id="S-Text-As-Password" ${util.getValue('setting_text_as_password') ? 'checked' : ''} class="panai-setting-checkbox"></label>
+        //                       <label class="panai-setting-label" title="目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全">自动推导网盘链接(实验性)<input type="checkbox" id="S-Auto-Complete" ${util.getValue('setting_auto_complete') ? 'checked' : ''} class="panai-setting-checkbox"></label>
+        //                       <label class="panai-setting-label">快捷键设置<input type="text" id="S-hotkeys" value="${util.getValue('setting_hotkeys')}" style="width: 100px;"></label> 
+        //                     </div>`;
+        //     Swal.fire({
+        //         title: '识别助手配置',
+        //         html,
+        //         icon: 'info',
+        //         showCloseButton: true,
+        //         confirmButtonText: '保存',
+        //         footer: '<div style="text-align: center;font-size: 1em;">点击查看 <a href="https://www.youxiaohou.com/tool/install-panai.html" target="_blank">使用说明</a>，助手免费开源，Powered by <a href="https://www.youxiaohou.com">油小猴</a></div>',
+        //         customClass
+        //     }).then((res) => {
+        //         res.isConfirmed && history.go(0);
+        //     });
+
+        //     document.getElementById('S-Auto').addEventListener('change', (e) => {
+        //         util.setValue('setting_auto_click_btn', e.target.checked);
+        //     });
+        //     document.getElementById('S-Active').addEventListener('change', (e) => {
+        //         util.setValue('setting_active_in_front', e.target.checked);
+        //     });
+        //     document.getElementById('S-Timer-Open').addEventListener('change', (e) => {
+        //         let rangeWrapper = document.getElementById('Panai-Range-Wrapper');
+        //         e.target.checked ? rangeWrapper.style.display = 'flex' : rangeWrapper.style.display = 'none';
+        //         util.setValue('setting_timer_open', e.target.checked);
+        //     });
+        //     document.getElementById('S-Auto-Complete').addEventListener('change', (e) => {
+        //         util.setValue('setting_auto_complete', e.target.checked);
+        //     })
+        //     document.getElementById('S-Text-As-Password').addEventListener('change', (e) => {
+        //         util.setValue('setting_text_as_password', e.target.checked);
+        //     });
+        //     document.getElementById('S-Timer').addEventListener('change', (e) => {
+        //         util.setValue('setting_timer', e.target.value);
+        //         document.getElementById('Timer-Value').innerText = `（${e.target.value / 1000}秒）`;
+        //     });
+        //     document.getElementById('S-hotkeys').addEventListener('change', (e) => {
+        //         util.setValue('setting_hotkeys', e.target.value);
+        //     });
+        // },
         showSettingBox() {
-            let html = `<div style="font-size: 1em;">
-                              <label class="panai-setting-label">填写密码后自动提交<input type="checkbox" id="S-Auto" ${util.getValue('setting_auto_click_btn') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label">前台打开网盘标签页<input type="checkbox" id="S-Active" ${util.getValue('setting_active_in_front') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label">倒计时结束自动打开<input type="checkbox" id="S-Timer-Open" ${util.getValue('setting_timer_open') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label" id="Panai-Range-Wrapper" style="${util.getValue('setting_timer_open') ? '' : 'display: none'}"><span>倒计时 <span id="Timer-Value">(${util.getValue('setting_timer') / 1000}秒)</span></span><input type="range" id="S-Timer" min="0" max="10000" step="500" value="${util.getValue('setting_timer')}" style="width: 200px;"></label>
-                              <label class="panai-setting-label">超链接的文本内容作为密码（实验性）<input type="checkbox" id="S-Text-As-Password" ${util.getValue('setting_text_as_password') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label" title="目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全">自动推导网盘链接(实验性)<input type="checkbox" id="S-Auto-Complete" ${util.getValue('setting_auto_complete') ? 'checked' : ''} class="panai-setting-checkbox"></label>
-                              <label class="panai-setting-label">快捷键设置<input type="text" id="S-hotkeys" value="${util.getValue('setting_hotkeys')}" style="width: 100px;"></label> 
-                            </div>`;
+            // 创建设置项配置数组，使用更具描述性的ID名称
+            const settings = [
+                {
+                    id: 'autoSubmitPassword',
+                    label: '填写密码后自动提交',
+                    type: 'checkbox',
+                    storageKey: 'setting_auto_click_btn',
+                    value: util.getValue('setting_auto_click_btn')
+                },
+                {
+                    id: 'openInFrontTab',
+                    label: '前台打开网盘标签页',
+                    type: 'checkbox',
+                    storageKey: 'setting_active_in_front',
+                    value: util.getValue('setting_active_in_front')
+                },
+                {
+                    id: 'enableAutoOpenTimer',
+                    label: '倒计时结束自动打开',
+                    type: 'checkbox',
+                    storageKey: 'setting_timer_open',
+                    value: util.getValue('setting_timer_open'),
+                    onchange: function (e) {
+                        const rangeWrapper = document.getElementById('timerRangeWrapper');
+                        if (rangeWrapper) {
+                            rangeWrapper.style.display = e.target.checked ? 'flex' : 'none';
+                        }
+                    }
+                },
+                {
+                    id: 'timerRange',
+                    label: '倒计时',
+                    type: 'range',
+                    storageKey: 'setting_timer',
+                    value: util.getValue('setting_timer'),
+                    min: 0,
+                    max: 10000,
+                    step: 500,
+                    wrapperId: 'timerRangeWrapper',
+                    wrapperStyle: { display: util.getValue('setting_timer_open') ? 'flex' : 'none' },
+                    extraContent: `<span id="timerValueDisplay">(${util.getValue('setting_timer') / 1000}秒)</span>`,
+                    onchange: function (e) {
+                        const timerDisplay = document.getElementById('timerValueDisplay');
+                        if (timerDisplay) {
+                            timerDisplay.textContent = `(${e.target.value / 1000}秒)`;
+                        }
+                    }
+                },
+                {
+                    id: 'useTextAsPassword',
+                    label: '超链接的文本内容作为密码（实验性）',
+                    type: 'checkbox',
+                    storageKey: 'setting_text_as_password',
+                    value: util.getValue('setting_text_as_password')
+                },
+                {
+                    id: 'enableAutoComplete',
+                    label: '自动推导网盘链接(实验性)',
+                    type: 'checkbox',
+                    storageKey: 'setting_auto_complete',
+                    value: util.getValue('setting_auto_complete'),
+                    title: '目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全'
+                },
+                {
+                    id: 'hotkeySettings',
+                    label: '快捷键设置',
+                    type: 'text',
+                    storageKey: 'setting_hotkeys',
+                    value: util.getValue('setting_hotkeys'),
+                    inputStyle: { width: '100px' }
+                }
+            ];
+
+            // 生成HTML
+            const html = _generateSettingsHtml(settings);
+
+            // 显示对话框
             Swal.fire({
                 title: '识别助手配置',
                 html,
@@ -782,32 +896,82 @@
                 res.isConfirmed && history.go(0);
             });
 
-            document.getElementById('S-Auto').addEventListener('change', (e) => {
-                util.setValue('setting_auto_click_btn', e.target.checked);
-            });
-            document.getElementById('S-Active').addEventListener('change', (e) => {
-                util.setValue('setting_active_in_front', e.target.checked);
-            });
-            document.getElementById('S-Timer-Open').addEventListener('change', (e) => {
-                let rangeWrapper = document.getElementById('Panai-Range-Wrapper');
-                e.target.checked ? rangeWrapper.style.display = 'flex' : rangeWrapper.style.display = 'none';
-                util.setValue('setting_timer_open', e.target.checked);
-            });
-            document.getElementById('S-Auto-Complete').addEventListener('change', (e) => {
-                util.setValue('setting_auto_complete', e.target.checked);
-            })
-            document.getElementById('S-Text-As-Password').addEventListener('change', (e) => {
-                util.setValue('setting_text_as_password', e.target.checked);
-            });
-            document.getElementById('S-Timer').addEventListener('change', (e) => {
-                util.setValue('setting_timer', e.target.value);
-                document.getElementById('Timer-Value').innerText = `（${e.target.value / 1000}秒）`;
-            });
-            document.getElementById('S-hotkeys').addEventListener('change', (e) => {
-                util.setValue('setting_hotkeys', e.target.value);
-            });
-        },
+            // 绑定事件监听器
+            _bindSettingsEvents(settings);
+            // 生成设置项HTML的辅助函数
+            function _generateSettingsHtml(settings) {
+                const containerStyle = { fontSize: '1em' };
+                const containerStyleStr = Object.entries(containerStyle)
+                    .map(([key, val]) => `${key}: ${val}`)
+                    .join('; ');
 
+                let html = `<div style="${containerStyleStr}">`;
+
+                settings.forEach(setting => {
+                    const {
+                        id,
+                        label,
+                        type,
+                        value,
+                        min,
+                        max,
+                        step,
+                        wrapperId,
+                        wrapperStyle,
+                        extraContent,
+                        inputStyle,
+                        title
+                    } = setting;
+
+                    // 处理包装器样式
+                    const styleStr = wrapperStyle ? Object.entries(wrapperStyle)
+                        .map(([key, val]) => `${key}: ${val}`)
+                        .join('; ') : '';
+
+                    // 处理输入框样式
+                    const inputStyleStr = inputStyle ? Object.entries(inputStyle)
+                        .map(([key, val]) => `${key}: ${val}`)
+                        .join('; ') : '';
+
+                    // 生成label元素
+                    html += `<label class="panai-setting-label" id="${wrapperId || id + 'Wrapper'}" style="${styleStr}" ${title ? `title="${title}"` : ''}>`;
+                    html += `<span>${label} ${extraContent || ''}</span>`;
+
+                    // 根据类型生成不同的输入控件
+                    if (type === 'checkbox') {
+                        html += `<input type="checkbox" id="${id}" ${value ? 'checked' : ''} class="panai-setting-checkbox">`;
+                    } else if (type === 'range') {
+                        html += `<input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${value}" style="${inputStyleStr}">`;
+                    } else if (type === 'text') {
+                        html += `<input type="text" id="${id}" value="${value}" style="${inputStyleStr}">`;
+                    }
+
+                    html += '</label>';
+                });
+
+                html += '</div>';
+                return html;
+            }
+
+            // 绑定设置项事件的辅助函数
+            function _bindSettingsEvents(settings) {
+                settings.forEach(setting => {
+                    const element = document.getElementById(setting.id);
+                    if (!element) return;
+
+                    element.addEventListener('change', (e) => {
+                        // 保存设置到存储
+                        const value = setting.type === 'checkbox' ? e.target.checked : e.target.value;
+                        util.setValue(setting.storageKey, value);
+
+                        // 执行自定义变更处理（如果有）
+                        if (typeof setting.onchange === 'function') {
+                            setting.onchange(e);
+                        }
+                    });
+                });
+            }
+        },
         registerMenuCommand() {
             GM_registerMenuCommand('👀 已识别：' + util.getValue('setting_success_times') + '次', () => {
                 this.clearIdentifyTimes();
