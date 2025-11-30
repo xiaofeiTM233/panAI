@@ -390,6 +390,11 @@
             name: 'FlowUs息流',
             storage: 'hash'
         },
+        'seewopinco': {
+            reg: /((?:https?:\/\/)?pinco\.seewo\.com\/s\/[0-9a-zA-Z]+)/,
+            host: /pinco\.seewo\.com/,
+            name: '希沃品课',
+        },
         'chrome': {
             reg: /^https?:\/\/chrome.google.com\/webstore\/.+?\/([a-z]{32})(?=[\/#?]|$)/,
             host: /chrome\.google\.com/,
