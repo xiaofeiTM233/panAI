@@ -189,11 +189,12 @@
             autoCompleteUrlPrefix: 'https://pan.xunlei.com/s/'
         },
         '123pan': {
-            reg: /((?:https?:\/\/)?www\.(?:123pan|123865|123684|123652|123912)\.com\/s\/[\w-]{6,})/,
-            host: /www\.(?:123pan|123865|123684|123652|123912)\.com/,
+            reg: /((?:https?:\/\/)?www\.123(\d{3}|pan)\.com\/s\/[\w-]{6,})/,
+            host: /www\.123(\d{3}|pan)\.com/,
             input: ['.ca-fot input', ".appinput .appinput"],
             button: ['.ca-fot button', ".appinput button"],
             name: '123云盘',
+            replaceHost: "www.123pan.com",
             storage: 'hash'
         },
         '360': {
