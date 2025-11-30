@@ -395,6 +395,11 @@
             host: /pinco\.seewo\.com/,
             name: '希沃品课',
         },
+        'steam': {
+            reg: /https?:\/\/store\.steampowered\.com\/app\/(\d+|[^\/\?\#]+)/,
+            host: /store\.steampowered\.com/,
+            name: 'Steam商店'
+        },
         'chrome': {
             reg: /^https?:\/\/chrome.google.com\/webstore\/.+?\/([a-z]{32})(?=[\/#?]|$)/,
             host: /chrome\.google\.com/,
