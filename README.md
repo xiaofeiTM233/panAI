@@ -86,6 +86,9 @@ replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的ho
 
 
 ### PANAI
+
+**v2.1.8** 识别优化，仅过滤链接中的个别中文或表情字符
+
 **v2.1.7** 支持希沃品课（seewopinco）和Steam商店（steam） （感谢 [@xiaofeiTM233](https://github.com/xiaofeiTM233) ）
 
 **v2.1.6** 代码重构，使用指数退避算法计算重试延迟
