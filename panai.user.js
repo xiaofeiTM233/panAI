@@ -396,6 +396,21 @@
             host: /pinco\.seewo\.com/,
             name: '希沃品课',
         },
+        'modrinth': {
+            reg: /https?:\/\/modrinth\.com\/mod\/[^\/\?\#]+/,
+            host: /modrinth\.com/,
+            name: 'Modrinth'
+        },
+        'curseforge': {
+            reg: /https?:\/\/(?:www\.)?curseforge\.com\/minecraft\/mc-mods\/[^\/\?\#]+/,
+            host: /www\.curseforge\.com/,
+            name: 'CurseForge'
+        },
+        'mczwlt': {
+            reg: /https?:\/\/(?:www\.)?mczwlt\.net\/resource\/[^\/\?\#]+/,
+            host: /www\.mczwlt\.net/,
+            name: '红石中继站'
+        },
         'steam': {
             reg: /https?:\/\/store\.steampowered\.com\/app\/(\d+|[^\/\?\#]+)/,
             host: /store\.steampowered\.com/,
@@ -1051,4 +1066,5 @@ name: 'setting_auto_complete',
     };
 
     main.init();
+
 })();
