@@ -87,6 +87,8 @@ replaceHost: 'drive.noire.cc',//替换链接的host，用于替换链接中的ho
 
 ### PANAI
 
+**v2.1.9** 链接中的点、冒号、斜杠等中文词自动转换为对应的字符
+
 **v2.1.8** 识别优化，仅过滤链接中的个别中文或表情字符
 
 **v2.1.7** 支持希沃品课（seewopinco）和Steam商店（steam） （感谢 [@xiaofeiTM233](https://github.com/xiaofeiTM233) ）
