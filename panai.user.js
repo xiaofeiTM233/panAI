@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name              网盘智能识别助手
 // @namespace         https://github.com/52fisher/panAI
-// @version           2.1.9
+// @version           2.2.0
 // @author            YouXiaoHou,52fisher
 // @description       智能识别选中文字中的🔗网盘链接和🔑提取码，识别成功打开网盘链接并自动填写提取码，省去手动复制提取码在输入的烦恼。支持识别 ✅百度网盘 ✅阿里云盘 ✅腾讯微云 ✅蓝奏云 ✅天翼云盘 ✅移动云盘 ✅迅雷云盘 ✅123云盘 ✅360云盘 ✅115网盘 ✅奶牛快传 ✅城通网盘 ✅夸克网盘 ✅FlowUs息流 ✅Chrome 扩展商店 ✅Edge 扩展商店 ✅Firefox 扩展商店 ✅Windows 应用商店。
 // @license           AGPL-3.0-or-later
@@ -384,6 +384,16 @@
             host: /dufile\.com/,
             name: 'duFile',
         },
+        '116pan': {
+            reg: /https:\/\/www\.116pan\.xyz\/f\/[a-zA-Z\d]+/,
+            host: /www\.116pan\.xyz/,
+            name: '116网盘',
+        },
+        'nitroflare': {
+            reg: /https?:\/\/(?:www\.)?nitroflare\.com\/view\/[\w/]+/,
+            host: /nitroflare\.com/,
+            name: 'NitroFlare',
+        },
         'flowus': {
             reg: /((?:https?:\/\/)?flowus\.cn\/[\S ^\/]*\/?share\/[a-z\d]{8}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{4}-[a-z\d]{12})/,
             host: /flowus\.cn/,
@@ -453,6 +463,9 @@
                 name: 'setting_timer',
                 value: 5000
             }, {
+                name: 'setting_auto_detect_unknown_disk',
+                value: false
+            }, {
                 name: 'setting_hotkeys',
                 value: 'F1'
             }];
@@ -489,97 +502,231 @@
             //自动推导网盘前缀的开关
             const isAutoComplete = util.getValue('setting_auto_complete');
             const isTextAsPassword = util.getValue('setting_text_as_password');
-            if (text !== this.lastText && text !== '') { //选择相同文字或空不识别
-                let start = performance.now();
-                this.lastText = text;
-                util.clog(`当前选中文字：${text}`);
-                let linkObj = this.parseLink(text);
-                util.clog(`解析结果：${JSON.stringify(linkObj)}`);
-                let link = linkObj.link;
-                let name = linkObj.name;
-                let pwd = this.parsePwd(text);
-                if (!link) {
-                    linkObj = this.parseParentLink(selection);
-                    link = linkObj.link;
-                    name = linkObj.name;
+            const isPanLinkBackup = util.getValue('setting_enable_pan_backup');
+            //选择相同文字或空不识别
+            if (text === this.lastText || text === '') {
+                return;
+            }
+            let start = performance.now();
+            this.lastText = text;
+            util.clog(`当前选中文字：${text}`);
+            let linkObj = this.parseLink(text);
+            util.clog(`解析结果：${JSON.stringify(linkObj)}`);
+            let link = linkObj.link;
+            let name = linkObj.name;
+            let pwd = this.parsePwd(text);
+            if (!link) {
+                // 未识别到链接，备用方案：从父元素解析链接
+                linkObj = this.parseParentLink(selection);
+                util.clog(`从父元素解析结果：${JSON.stringify(linkObj)}`);
+                link = linkObj.link;
+                name = linkObj.name;
+            }
+            if (isTextAsPassword && !pwd) {
+                pwd = this.parseLinkInnerTextAsPwd(selection);
+            }
+            if (isAutoComplete && !link) {
+                // 未识别到链接，备用方案：自动补全链接(在设置中打开 自动推导网盘前缀 功能开关)
+                linkObj = this.parseLink(text, true);
+                util.clog(`自动补全解析结果：${JSON.stringify(linkObj)}`);
+                link = linkObj.link;
+                name = linkObj.name;
+            }
+            if (isPanLinkBackup && !link) {
+                //未识别到链接，备用方案：不依赖已知网盘域名白名单的智能推测
+                if (!this.isPanLinkBackup(text)) {
+                    return;
                 }
-                if (isTextAsPassword && !pwd) {
-                    pwd = this.parseLinkInnerTextAsPwd(selection);
+                linkObj = this.parseLink(text, false, true);
+                util.clog(`智能推测解析结果：${JSON.stringify(linkObj)}`);
+                link = linkObj.link;
+                name = linkObj.name;
+                let end = performance.now();
+                let time = (end - start).toFixed(3);
+                util.clog(`文本识别结果：${name} 链接：${link} 密码：${pwd} 耗时：${time}毫秒`);
+                let option = {
+                    toast: true,
+                    showCancelButton: true,
+                    position: 'top',
+                    title: `AI发现<span style="color: #2778c4;margin: 0 5px;">${name}</span>链接`,
+                    html: `<span style="font-size: 0.8em;">${!!pwd ? '密码：' + pwd : '是否打开？'}</span>`,
+                    confirmButtonText: '打开',
+                    cancelButtonText: '关闭',
+                    customClass
+                };
+                if (util.getValue('setting_timer_open')) {
+                    option.timer = util.getValue('setting_timer');
+                    option.timerProgressBar = true;
                 }
-                if (isAutoComplete && !link) {
-                    linkObj = this.parseLink(text, true);
-                    link = linkObj.link;
-                    name = linkObj.name;
-                }
-                if (link) {
-                    if (!/https?:\/\//.test(link)) {
-                        link = 'https://' + link;
-                    }
-                    let end = performance.now();
-                    let time = (end - start).toFixed(3);
-                    util.clog(`文本识别结果：${name} 链接：${link} 密码：${pwd} 耗时：${time}毫秒`);
-                    let option = {
-                        toast: true,
-                        showCancelButton: true,
-                        position: 'top',
-                        title: `发现<span style="color: #2778c4;margin: 0 5px;">${name}</span>链接`,
-                        html: `<span style="font-size: 0.8em;">${!!pwd ? '密码：' + pwd : '是否打开？'}</span>`,
-                        confirmButtonText: '打开',
-                        cancelButtonText: '关闭',
-                        customClass
-                    };
-                    if (util.getValue('setting_timer_open')) {
-                        option.timer = util.getValue('setting_timer');
-                        option.timerProgressBar = true;
-                    }
-                    util.setValue('setting_success_times', util.getValue('setting_success_times') + 1);
-
-                    Swal.fire(option).then((res) => {
-                        this.lastText = 'lorem&';
-                        selection.empty();
-                        //防御式编程
-                        if (!res.isConfirmed && res.dismiss !== 'timer') {
-                            return;
-                        }
+                util.setValue('setting_success_times', util.getValue('setting_success_times') + 1);
+                Swal.fire(option).then(res => {
+                    if (res.isConfirmed) {
                         // 获取是否在前台打开的设置
                         const active = util.getValue('setting_active_in_front');
+                        util.clog(`密码：${pwd}`);
+                        pwd && util.setValue(linkObj.storagePwdName, pwd);
                         let targetLink = link;
-                        // 密码为空时，直接打开链接
-                        if (!pwd) {
-                            GM_openInTab(targetLink, { active });
-                            return;
-                        }
-                        // 存储方式为local时，将密码存储到本地存储
-                        // 根据存储类型决定如何处理链接
-                        if (linkObj.storage === "local") {
-                            util.setValue(linkObj.storagePwdName, pwd);
-                            // local模式：直接使用原链接，不进行任何参数拼接
-                            targetLink = link;
-                        } else if (linkObj.storage === "hash") {
-                            // 链接中没有#：使用三目运算符直接拼接pwd参数和#hash
-                            targetLink = link.includes('?') ? `${link}&pwd=${pwd}#${pwd}` : `${link}?pwd=${pwd}#${pwd}`;
-                            // 若为hash模式：需要考虑框架路由情况
-                            if (link.includes('#')) {
-                                // 链接中已有#，可能是使用了Vue等框架的路由模式
-                                // 检查#后面的内容是否符合框架路由特征（通常包含/或?等）
-                                const hashIndex = link.indexOf('#');
-                                const hashPart = link.slice(hashIndex + 1);
-                                const urlPart = link.slice(0, hashIndex); // 提取#前面的URL部分
-                                // 判断是否为框架路由模式（这里通过简单规则判断，可根据需要调整）
-                                const isFrameworkRoute = hashPart.startsWith('/') || hashPart.includes('?') || hashPart.includes('=');
-                                if (isFrameworkRoute) {
-                                    // 框架路由模式：在#前面添加pwd查询参数，不影响hash路由
-                                    targetLink = urlPart.includes('?') ? `${urlPart}&pwd=${pwd}#${hashPart}` : `${urlPart}?pwd=${pwd}#${hashPart}`;
-                                }
-                            }
-                        }
-                        // 打开标签页
                         GM_openInTab(targetLink, { active });
-                    });
-                }
+                    }
+                });
+                return;
             }
-        },
+            if (!link) {
+                return;
+            }
+            if (!/https?:\/\//.test(link)) {
+                link = 'https://' + link;
+            }
+            let end = performance.now();
+            let time = (end - start).toFixed(3);
+            util.clog(`文本识别结果：${name} 链接：${link} 密码：${pwd} 耗时：${time}毫秒`);
+            let option = {
+                toast: true,
+                showCancelButton: true,
+                position: 'top',
+                title: `发现<span style="color: #2778c4;margin: 0 5px;">${name}</span>链接`,
+                html: `<span style="font-size: 0.8em;">${!!pwd ? '密码：' + pwd : '是否打开？'}</span>`,
+                confirmButtonText: '打开',
+                cancelButtonText: '关闭',
+                customClass
+            };
+            if (util.getValue('setting_timer_open')) {
+                option.timer = util.getValue('setting_timer');
+                option.timerProgressBar = true;
+            }
+            util.setValue('setting_success_times', util.getValue('setting_success_times') + 1);
 
+            Swal.fire(option).then((res) => {
+                this.lastText = 'lorem&';
+                selection.empty();
+                //防御式编程
+                if (!res.isConfirmed && res.dismiss !== 'timer') {
+                    return;
+                }
+                // 获取是否在前台打开的设置
+                const active = util.getValue('setting_active_in_front');
+                let targetLink = link;
+                // 密码为空时，直接打开链接
+                if (!pwd) {
+                    GM_openInTab(targetLink, { active });
+                    return;
+                }
+                // 存储方式为local时，将密码存储到本地存储
+                // 根据存储类型决定如何处理链接
+                if (linkObj.storage === "local") {
+                    util.setValue(linkObj.storagePwdName, pwd);
+                } else if (linkObj.storage === "hash") {
+                    // 链接中没有#：使用三目运算符直接拼接pwd参数和#hash
+                    targetLink = link.includes('?') ? `${link}&pwd=${pwd}#${pwd}` : `${link}?pwd=${pwd}#${pwd}`;
+                    // 若为hash模式：需要考虑框架路由情况
+                    if (link.includes('#')) {
+                        // 链接中已有#，可能是使用了Vue等框架的路由模式
+                        // 检查#后面的内容是否符合框架路由特征（通常包含/或?等）
+                        const hashIndex = link.indexOf('#');
+                        const hashPart = link.slice(hashIndex + 1);
+                        const urlPart = link.slice(0, hashIndex); // 提取#前面的URL部分
+                        // 判断是否为框架路由模式（这里通过简单规则判断，可根据需要调整）
+                        const isFrameworkRoute = hashPart.startsWith('/') || hashPart.includes('?') || hashPart.includes('=');
+                        if (isFrameworkRoute) {
+                            // 框架路由模式：在#前面添加pwd查询参数，不影响hash路由
+                            targetLink = urlPart.includes('?') ? `${urlPart}&pwd=${pwd}#${hashPart}` : `${urlPart}?pwd=${pwd}#${hashPart}`;
+                        }
+                    }
+                }
+                // 打开标签页
+                GM_openInTab(targetLink, { active });
+            });
+        },
+        /**
+         * 备用网盘链接检测函数 - 不依赖已知网盘域名白名单
+         * 功能：智能推测不在已知白名单中的链接是否为网盘链接
+         * 适用场景：当链接不在已知网盘域名列表中时使用此备用检测机制
+         * @param {string} link - 待检测的链接字符串
+         * @returns {boolean} - 返回true表示推测为网盘链接，false表示推测为非网盘链接
+         */
+        isPanLinkBackup(text) {
+            if (!text || typeof text !== 'string') {
+                return false;
+            }
+            //清洗text,提取出链接
+            let link = text.match(/https?:\/\/[^\s]+/)[0];
+            // 规范化链接
+            const normalizedLink = link.trim().toLowerCase();
+
+            // 步骤1：检查是否为有效的HTTP/HTTPS链接
+            if (!/https?:\/\//.test(normalizedLink)) {
+                return false;
+            }
+
+            // 步骤2：提取链接的各个部分
+            const urlParts = {
+                protocol: normalizedLink.match(/^https?:\/\//)[0],
+                domain: normalizedLink.match(/^https?:\/\/([^\/]+)/)[1],
+                path: normalizedLink.replace(/^https?:\/\/[^\/]+/, ''),
+                full: normalizedLink
+            };
+
+            // 步骤3：检查链接中是否包含云存储相关关键词
+            const storageKeywords = [
+                'pan', 'yun', 'drive', 'cloud', 'share', 'file',
+                'download', 'storage', 'backup', 'sync', 'dropbox',
+                'mega', 'box', 'mediafire', 'zippyshare', '4shared'
+            ];
+
+            const hasStorageKeyword = storageKeywords.some(keyword =>
+                urlParts.domain.includes(keyword) || urlParts.path.includes(keyword)
+            );
+
+            // 步骤4：检查链接路径是否符合常见网盘模式
+            const commonPanPathPatterns = [
+                /\/s\/[a-zA-Z0-9]+/,          // /s/xxx 分享模式
+                /\/share\/[a-zA-Z0-9]+/,      // /share/xxx 分享模式
+                /\/file\/[a-zA-Z0-9]+/,       // /file/xxx 文件模式
+                /\/folder\/[a-zA-Z0-9]+/,     // /folder/xxx 文件夹模式
+                /\/download\/[a-zA-Z0-9]+/,   // /download/xxx 下载模式
+                /\/d\/[a-zA-Z0-9]+/,          // /d/xxx 直接访问模式
+                /\/public\/[a-zA-Z0-9]+/,     // /public/xxx 公开访问模式
+                /\/view\/[a-zA-Z0-9]+/,       // /view/xxx 查看模式
+                /file-\d+\.html/,             // file-xxx.html 静态页面模式
+                /#f?!?[a-zA-Z0-9!-]+/,        // Mega网盘模式
+                /\/viewfile/,                   //viewfile 查看文件模式
+            ];
+
+            const hasCommonPanPath = commonPanPathPatterns.some(pattern =>
+                pattern.test(urlParts.path)
+            );
+
+            // 步骤5：检查链接是否包含常见的网盘参数
+            const commonPanParams = ['pwd', 'code', 'access', 'key', 'token', 'shareid', 'surl'];
+            const hasCommonPanParam = commonPanParams.some(param =>
+                urlParts.full.includes(`?${param}=`) || urlParts.full.includes(`&${param}=`)
+            );
+
+            // 步骤6：检查域名结构是否暗示为云存储服务
+            const domainPatterns = [
+                /(?:pan|yun|drive|cloud|share|file|download)\.[a-zA-Z0-9]+\.(?:com|cn|net|org)/,
+                /[a-zA-Z0-9]+-(?:pan|yun|drive|cloud|share|file|download)\.(?:com|cn|net|org)/
+            ];
+
+            const hasPanDomainPattern = domainPatterns.some(pattern =>
+                pattern.test(urlParts.domain)
+            );
+
+            // 步骤7：检查链接长度和复杂度（网盘链接通常有特定的长度和复杂度）
+            const pathLength = urlParts.path.length;
+            const hasComplexPath = pathLength > 5 && pathLength < 50; // 合理的路径长度范围
+
+            // 综合评分：满足以下条件越多，越可能是网盘链接
+            let score = 0;
+            if (hasStorageKeyword) score++;
+            if (hasCommonPanPath) score++;
+            if (hasCommonPanParam) score++;
+            if (hasPanDomainPattern) score++;
+            if (hasComplexPath) score++;
+
+            // 根据评分判断：至少满足3个条件则认为是网盘链接
+            return score >= 3;
+        },
         pressKey(event) {
             if (event.key === 'Enter') {
                 let confirmBtn = document.querySelector('.panai-container .swal2-confirm');
@@ -601,7 +748,7 @@
         },
 
         //正则解析网盘链接
-        parseLink(text = '', autoCompletePrefix = false) {
+        parseLink(text = '', autoCompletePrefix = false, isPanLinkBackup = false) {
             let obj = { name: '', link: '', storage: '', storagePwdName: '' };
             if (!text) {
                 return obj;
@@ -622,7 +769,21 @@
             //过滤链接中的中文或表情字符
             // text = text.replace(/[\u4e00-\u9fa5()（）,\u200B，\uD83C-\uDBFF\uDC00-\uDFFF]/g, '');
             text = text.replace(/(?<=[\w./:])[\u4e00-\u9fa5\uD83C-\uDBFF\uDC00-\uDFFF]{1,2}(?=[\w./:])/g, "");
-
+            if (isPanLinkBackup) {
+                //清洗text,提取出链接
+                let link = text.match(/https?:\/\/[A-Za-z0-9_\-\+.:?&@=/%#,;]*/);
+                if (link) {
+                    try {
+                        let url = new URL(link[0]);
+                        obj.link = url.href;
+                        obj.name = url.hostname.split('.').slice(-2)[0] || '未知网盘';
+                        obj.storagePwdName = "tmp_common_pwd";
+                        obj.storage = "local";
+                    } catch {
+                    }
+                }
+                return obj;
+            }
             for (let name in opt) {
                 let item = opt[name];
                 //要求补全链接的前缀应提前加入对应位置
@@ -630,7 +791,6 @@
                     text = text.replace(item.autoCompleteReg, item.autoCompleteUrlPrefix + "$&");
                 }
                 if (item.reg.test(text)) {
-                    console.log(`匹配文本：${text} 正则：${item.reg},名称：${item.name},开关：${autoCompletePrefix}`);
                     let matches = text.match(item.reg);
                     obj.name = item.name;
                     obj.link = matches[0];
@@ -688,20 +848,20 @@
             let query = util.parseQuery('pwd|p');
             let pwd = '';
             let hash = location.hash.slice(1);//hash中可能存在密码
-            hash = /\W/.test(hash) ? null : hash //若hash中存在\W（非字母、下划线、数字字符）,有可能使用框架的hash模式，此时hash的可信度低
+            hash = /\W/.test(hash) ? null : hash;//若hash中存在\W（非字母、下划线、数字字符）,有可能使用框架的hash模式，此时hash的可信度低
             let panType = this.panDetect();
             for (let name in opt) {
                 let val = opt[name];
                 if (panType === name) {
                     if (val.storage === 'local') {
                         //当前local存储的密码不一定是当前链接的密码，用户可能通过url直接访问或者恢复页面，这样取出来的密码可能是其他链接的
-                        //如果能从url中获取到密码，则应该优先使用url中获取的密码,但现在使用JS框架的网站很多，存在不少使用hash模式的路由，hash的可信度应该降低
+                        //如果能从url中获取到密码，则应该优先使用url中获取的密码,但现在使用JS框架的网站很多，存在不少使用hash模式的路由，hash的可信度应该降低                
                         pwd = query || util.getValue(val.storagePwdName) || hash;
                         pwd && this.doFillAction(val.input, val.button, pwd);
                         return;
                     }
                     if (val.storage === 'hash') {
-                        if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(hash)) { //过滤掉不正常的Hash
+                        if (!/^(?:wss:[a-zA-Z\d]+|[a-zA-Z0-9]{3,8})$/.test(hash)) {//过滤掉不正常的Hash
                             return;
                         }
                         pwd = query || hash;
@@ -710,12 +870,107 @@
                     }
                 }
             }
+            pwd = util.getValue('tmp_common_pwd');
+            const isPanLinkBackup = util.getValue('setting_auto_detect_unknown_disk');
+            // 优化：处理未知网盘的密码填充逻辑
+            if (isPanLinkBackup && !panType && pwd) {
+                // 【优化】更全面地查找可能的密码输入框
+               const passwordInputSelectors = [
+                    'input[type=password]',
+                    'input.pwd',
+                    'input.password',
+                    'input[class*=pwd]',
+                    'input[class*=password]',
+                    'input[id*=pwd]',
+                    'input[id*=password]',
+                    'input[placeholder*=密码]',
+                    'input[placeholder*=pwd]',
+                    'input[placeholder*=提取码]',
+                    'input[placeholder*=access]',
+                    'input[placeholder*=code]'
+                ];
+                this.doFillAction(passwordInputSelectors, [], pwd,true);
+                //填充完成后清除密码
+                util.setValue('tmp_common_pwd', '');
+                return;
+            }
         },
-
-        doFillAction(inputSelector, buttonSelector, pwd) {
+        // 在密码输入框附近查找提交按钮
+findNearbySubmitButton(inputElement) {
+    // 查找提交按钮的选择器列表
+    const submitButtonSelectors = [
+        'button',
+        'input[type=submit]',
+        'input[type=button]',
+        '.submit',
+        '.submit-btn',
+        '.btn-submit',
+        '.access-btn',
+        '.confirm-btn',
+        '.ok-btn',
+        '.button',
+        '.btn',
+        '[class*=submit]',
+        '[class*=access]',
+        '[class*=confirm]',
+        '[class*=ok]',
+        '[class*=button]',
+        '[class*=btn]',
+        '[id*=submit]',
+        '[id*=access]',
+        '[id*=confirm]',
+        '[id*=ok]',
+        '[id*=button]',
+        '[id*=btn]'
+    ];
+    
+    // 1. 首先检查输入框的父元素内是否有提交按钮
+    let parentElement = inputElement.parentElement;
+    let depth = 0;
+    const maxDepth = 3; // 最多向上查找3层父元素
+    
+    while (parentElement && depth < maxDepth) {
+        for (const selector of submitButtonSelectors) {
+            const buttons = parentElement.querySelectorAll(selector);
+            for (const button of buttons) {
+                // 检查按钮是否可见且可能是提交按钮
+                if (!util.isHidden(button)) {
+                    // 检查按钮文本或属性是否包含提交相关的关键词
+                    const buttonText = (button.textContent || button.value || button.innerText || '').toLowerCase();
+                    const buttonType = button.type ? button.type.toLowerCase() : '';
+                    
+                    if (buttonType === 'submit' || 
+                        buttonText.includes('提交') || 
+                        buttonText.includes('确认') || 
+                        buttonText.includes('登录') || 
+                        buttonText.includes('access') || 
+                        buttonText.includes('ok') || 
+                        buttonText.includes('go') || 
+                        buttonText.includes('enter')) {
+                        return button;
+                    }
+                }
+            }
+        }
+        
+        parentElement = parentElement.parentElement;
+        depth++;
+    }
+    
+    // 2. 如果在父元素内没有找到，检查整个页面
+    for (const selector of submitButtonSelectors) {
+        const button = document.querySelector(selector);
+        if (button && !util.isHidden(button)) {
+            return button;
+        }
+    }
+    
+    return null;
+},
+        doFillAction(inputSelector, buttonSelector, pwd,isPanLinkBackup=false) {
             let attempt = 0;          // 尝试次数
             const maxAttempts = 10;   // 最大尝试次数
-            const baseDelay = 400;    // 基础延迟时间(ms)
+            const baseDelay = 800;    // 基础延迟时间(ms)
             const maxDelay = 5000;    // 最大延迟时间(ms)
             let timeoutId = null;
 
@@ -723,7 +978,7 @@
             const retryWithBackoff = async () => {
                 // 检查是否已达到最大尝试次数
                 if (attempt >= maxAttempts) {
-                    console.log('密码填充超时，已达到最大尝试次数');
+                    util.clog('密码填充超时，已达到最大尝试次数');
                     return;
                 }
 
@@ -731,8 +986,7 @@
 
                 try {
                     let input = util.query(inputSelector);
-                    let button = util.query(buttonSelector);
-
+                    let button =isPanLinkBackup? this.findNearbySubmitButton(input):util.query(buttonSelector);
                     if (input && !util.isHidden(input)) {
                         // 找到输入框并可见，执行填充操作
                         let titletips = attempt === 1 ? 'AI已识别到密码！正自动帮您填写' : 'AI已识别到密码！正自动帮您重试 +' + attempt + ' 次';
@@ -789,7 +1043,7 @@
                 const jitter = 0.8 + 0.4 * Math.random(); // 添加随机因子
                 const delay = Math.floor(exponentialDelay * jitter);
 
-                console.log(`第${attempt}次尝试失败，${delay}ms后进行第${attempt + 1}次尝试`);
+                util.clog(`第${attempt}次尝试失败，${delay}ms后进行第${attempt + 1}次尝试`);
                 timeoutId = setTimeout(retryWithBackoff, delay);
             };
 
@@ -910,6 +1164,14 @@
                     storageKey: 'setting_auto_complete',
                     value: util.getValue('setting_auto_complete'),
                     title: '目前仅支持百度、迅雷、夸克等网盘链接进行自动推导补全'
+                },
+                {
+                    id: 'enableAutoDetectUnknownDisk',
+                    label: '自动识别未知网盘（实验性）',
+                    type: 'checkbox',
+                    storageKey: 'setting_auto_detect_unknown_disk',
+                    value: util.getValue('setting_auto_detect_unknown_disk'),
+                    title: '开启后，助手将尝试识别未知的网盘链接。'
                 },
                 {
                     id: 'hotkeySettings',
